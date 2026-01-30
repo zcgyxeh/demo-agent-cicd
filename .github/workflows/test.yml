@@ -1,38 +1,13 @@
-name: agent-ci-demo
+name: fail-test
 
-on: [push]
-
-permissions:
-  issues: write
+on:
+  push:
 
 jobs:
-  agent:
+  fail:
     runs-on: ubuntu-latest
     steps:
-      - name: Step 1 - Do something (and fail)
-        continue-on-error: true
+      - name: Force failure
         run: |
-          echo "CI is running 🎉"
-          echo "Something went wrong ❌"
+          echo "I will fail now"
           exit 1
-
-      - name: Step 2 - Create issue on failure
-        if: failure()
-        uses: actions/github-script@v7
-        with:
-          script: |
-            github.rest.issues.create({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              title: "❌ CI failed on commit " + context.sha,
-              body: `
-### CI Failure Detected 🤖
-
-The CI workflow failed automatically.
-
-**Commit**
-\`${context.sha}\`
-
-Please check the Actions log.
-`
-            })
