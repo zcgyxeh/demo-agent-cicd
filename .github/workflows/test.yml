@@ -10,36 +10,61 @@ jobs:
   agent:
     runs-on: ubuntu-latest
     steps:
-      - name: Step 1 - Do something (and fail)
+      - name: Step 1 - Run task and capture error
+        id: run_task
         run: |
           echo "CI is running 🎉"
           echo "Something went wrong ❌"
+          echo "Fake error: division by zero" >&2
           exit 1
+        continue-on-error: true
 
-      - name: Step 2 - Create issue when failure happens
+      - name: Step 2 - Save logs to file
         if: failure()
+        run: |
+          echo "Collecting logs..."
+          echo "=== STDOUT / STDERR ===" > error.log
+          echo "See Actions log for full details." >> error.log
+
+      - name: Step 3 - Create issue with error log (main only)
+        if: failure() && github.ref == 'refs/heads/main'
         uses: actions/github-script@v7
         with:
           script: |
+            const fs = require("fs");
+
             const title = "❌ CI failed on commit " + context.sha;
-      
+
             const { data: issues } = await github.rest.issues.listForRepo({
               owner: context.repo.owner,
               repo: context.repo.repo,
               state: "open",
               per_page: 50
             });
-      
-            const exists = issues.some(i => i.title === title);
-            if (exists) {
+
+            if (issues.some(i => i.title === title)) {
               core.info("Issue already exists: " + title);
               return;
             }
-      
+
+            let logContent = "No logs collected.";
+            try {
+              logContent = fs.readFileSync("error.log", "utf8");
+            } catch (e) {}
+
+            const body =
+              "### 🚨 CI Failure Detected\n\n" +
+              "**Commit:** `" + context.sha + "`\n\n" +
+              "#### Error Log\n" +
+              "```\n" +
+              logContent +
+              "\n```\n\n" +
+              "Check Actions log for full output.";
+
             await github.rest.issues.create({
               owner: context.repo.owner,
               repo: context.repo.repo,
               title,
-              body: "CI failed automatically.\n\nCommit: " + context.sha + "\n\nCheck Actions log."
+              labels: ["ci", "autogen"],
+              body
             });
-
