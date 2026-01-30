@@ -21,18 +21,16 @@ jobs:
         uses: actions/github-script@v7
         with:
           script: |
+            const body =
+              "### CI Failure Detected 🤖\n\n" +
+              "The workflow failed automatically.\n\n" +
+              "**Commit**\n" +
+              context.sha + "\n\n" +
+              "Please check the Actions log for details.";
+
             github.rest.issues.create({
               owner: context.repo.owner,
               repo: context.repo.repo,
               title: "❌ CI failed on commit " + context.sha,
-              body: `
-### CI Failure Detected 🤖
-
-The workflow failed automatically.
-
-**Commit**
-\`${context.sha}\`
-
-Please check the Actions log for details.
-`
-            })
+              body: body
+            });
